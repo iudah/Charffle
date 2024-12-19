@@ -1,0 +1,6 @@
+NATIVE{
+    global:
+        JNI_OnLoad;
+    local:
+        *;
+};
