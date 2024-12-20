@@ -21,6 +21,9 @@ char set_words_directory_path(const char *path);
 jobjectArray shuffle(JNIEnv *env, __attribute__((unused)) jobject clazz,
                      jobject chars) {
 
+  freopen("/sdcard/log.txt", "w+", stdout);
+  printf("Logging to /sdcard/log.txt\n");
+
   const char *xters = (*env)->GetStringUTFChars(env, chars, NULL);
 
   uint64_t n_matches = 0;
@@ -28,7 +31,8 @@ jobjectArray shuffle(JNIEnv *env, __attribute__((unused)) jobject clazz,
   (*env)->ReleaseStringUTFChars(env, chars, xters);
 
   jobjectArray jmatches = (jobjectArray)(*env)->NewObjectArray(
-      env, matches ? n_matches : 1, (*env)->FindClass(env, "java/lang/String"),
+      env, (matches && n_matches) ? n_matches : 1,
+      (*env)->FindClass(env, "java/lang/String"),
       (*env)->NewStringUTF(env, ""));
 
   if (matches) {
@@ -44,6 +48,8 @@ jobjectArray shuffle(JNIEnv *env, __attribute__((unused)) jobject clazz,
             env, n_matches ? "A problem occured while computing anagrams"
                            : "No anagrams found"));
   }
+
+  fclose(stdout);
 
   return jmatches;
 }
@@ -82,7 +88,7 @@ struct extract {
 
 // Worker function to extract assets based on letters in `xters`
 void *extract_asset_worker(struct extract *e) {
-  char buffer[1024]; // Buffer for reading asset data
+  char buffer[4096]; // Buffer for reading asset data
   char asset[18];    // Buffer for asset file name (e.g., "words/a_words.txt")
   memcpy(asset, asset_base_name, 18); // Initialize asset name with base
 
@@ -92,7 +98,7 @@ void *extract_asset_worker(struct extract *e) {
   while ((e->xter_len--) && (asset[6] = *e->xters)) {
     // Open the asset for the current letter
     AAsset *asset_object =
-        AAssetManager_open(e->aam, asset, AASSET_MODE_UNKNOWN);
+        AAssetManager_open(e->aam, asset, AASSET_MODE_STREAMING);
 
     if (asset_object) {
       // Build the path for the internal file
@@ -144,6 +150,7 @@ jboolean extract_words_asset(JNIEnv *env, __attribute__((unused)) jobject thiz,
 
   // Register directory path to shuffle
   set_words_directory_path(dir);
+  // register_private_path(env, thiz, fdir, errmsg);
 
   // Create the "words" directory inside the provided directory
   char word_dir[256];
@@ -216,6 +223,7 @@ jboolean extract_words_asset(JNIEnv *env, __attribute__((unused)) jobject thiz,
   // Return success if all threads succeeded
   return JNI_TRUE;
 }
+
 jint JNI_OnLoad(JavaVM *vm, __attribute__((unused)) void *reserved) {
   JNIEnv *env = NULL;
   if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
