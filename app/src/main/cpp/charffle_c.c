@@ -21,9 +21,7 @@ char set_words_directory_path(const char *path);
 jobjectArray shuffle(JNIEnv *env, __attribute__((unused)) jobject clazz,
                      jobject chars) {
 
-  freopen("/sdcard/log.txt", "w+", stdout);
-  printf("Logging to /sdcard/log.txt\n");
-
+  
   const char *xters = (*env)->GetStringUTFChars(env, chars, NULL);
 
   uint64_t n_matches = 0;
@@ -49,7 +47,6 @@ jobjectArray shuffle(JNIEnv *env, __attribute__((unused)) jobject clazz,
                            : "No anagrams found"));
   }
 
-  fclose(stdout);
 
   return jmatches;
 }
@@ -253,6 +250,5 @@ jint JNI_OnLoad(JavaVM *vm, __attribute__((unused)) void *reserved) {
   }
   LOGI("registered natives");
 
-  // cache_toast(env);
   return JNI_VERSION_1_6;
 }

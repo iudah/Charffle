@@ -1,9 +1,8 @@
 package com.zeroone.charffle
 
-import android.content.Context
 import android.content.res.AssetManager
 import android.os.Bundle
-import android.widget.Toast
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -45,20 +44,8 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Environment
-import android.os.Handler
-import android.provider.Settings
-import android.util.Log
-import java.io.FileWriter
 
-
-fun Context.showToast(text: String) {
-    Toast.makeText(this, text, Toast.LENGTH_LONG).show()
-}
+val LOGTAG = "CharffleActivity"
 
 class CharffleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,51 +65,27 @@ class CharffleActivity : ComponentActivity() {
                     .isAppearanceLightNavigationBars = !isSystemInDarkTheme()
 
                 Surface(tonalElevation = 5.dp) {
-                    Box(modifier = Modifier.statusBarsPadding()) {
-                        /*Spacer(
-                            Modifier.windowInsetsTopHeight(
-                                WindowInsets.systemBars
-                            )
-                        )*/
-                        CharffleScreen()
-                    }
+                    Box(modifier = Modifier.statusBarsPadding()) { CharffleScreen() }
                 }
             }
-            try {
-                actionBar?.hide()
-            } catch (e: Exception) {
-                Toast.makeText(this, e.toString(), Toast.LENGTH_LONG).show()
-            }
+            actionBar?.hide()
         }
-        try {val dir ="/data/data/com.zeroone.charffle/files/"    
-                    val errmsg = Array<String>(1) { "" }
-            val a_words_file = File(/*filesDir.absolutePath*/dir, "words/a_words.txt")
+        try {
+            val errmsg = Array<String>(1) { "" }
+            val a_words_file = File(filesDir.absolutePath, "words/a_words.txt")
             if (!a_words_file.exists()) {
-                if (!extractWordsAsset(assets, /*filesDir.absolutePath*/dir, errmsg))
-                    (this as Context).showToast(errmsg[0])
+                Log.d(LOGTAG, a_words_file.path.toString() + " does not exist")
 
-                (this as Context).showToast(a_words_file.path.toString() + " failed")
+                if (!extractWordsAsset(assets, filesDir.absolutePath, errmsg))
+                    Log.d(LOGTAG, errmsg[0])
             } else {
-                if (registerPrivatePath(/*filesDir.absolutePath*/dir, errmsg))
-                    (this as Context).showToast("private path registered: ${errmsg[0]}")
+                if (registerPrivatePath(filesDir.absolutePath, errmsg))
+                    Log.i(LOGTAG, "private path registered: ${errmsg[0]}")
             }
-            if (a_words_file.exists())
-                (this as Context).showToast(a_words_file.path.toString() + " success")
+            if (a_words_file.exists()) Log.i(LOGTAG, a_words_file.path.toString() + " exists")
         } catch (e: Exception) {
-            (this as Context).showToast(e.toString())
+            Log.d(LOGTAG, e.toString())
         }
-
-        requestPermissions(
-            arrayOf(
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-            ),
-            6,
-        )
-        // Check for external storage
-        if (Build.VERSION.SDK_INT >= 30 && !Environment.isExternalStorageManager())
-            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-
     }
 
     companion object {
@@ -143,7 +106,7 @@ class CharffleActivity : ComponentActivity() {
             try {
                 System.loadLibrary("charffle_c")
             } catch (e: UnsatisfiedLinkError) {
-                (this as Context).showToast("Library load failed: ${e.message}")
+                Log.d(LOGTAG, "Library load failed: ${e.message}")
             }
         }
     }
@@ -170,9 +133,9 @@ fun CharffleScreen() {
                     try {
                         list = CharffleActivity.shuffle(chars.toString())
 
-                        withContext(Dispatchers.Main) { ctx.showToast(msg[0]) }
+                        withContext(Dispatchers.Main) { Log.d(LOGTAG, "Shuffle Successful") }
                     } catch (e: Exception) {
-                        withContext(Dispatchers.Main) { ctx.showToast(e.toString()) }
+                        withContext(Dispatchers.Main) { Log.d(LOGTAG, e.toString()) }
                     }
                 }
             },
