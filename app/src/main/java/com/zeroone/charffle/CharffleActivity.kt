@@ -1,5 +1,6 @@
 package com.zeroone.charffle
 
+import android.content.Context
 import android.content.res.AssetManager
 import android.os.Bundle
 import android.widget.Toast
@@ -44,6 +45,20 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Environment
+import android.os.Handler
+import android.provider.Settings
+import android.util.Log
+import java.io.FileWriter
+
+
+fun Context.showToast(text: String) {
+    Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+}
 
 class CharffleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,31 +94,35 @@ class CharffleActivity : ComponentActivity() {
                 Toast.makeText(this, e.toString(), Toast.LENGTH_LONG).show()
             }
         }
-        try {
-            val a_words_file = File(getFilesDir().getAbsolutePath(), "words/a_words.txt")
+        try {val dir ="/data/data/com.zeroone.charffle/files/"    
+                    val errmsg = Array<String>(1) { "" }
+            val a_words_file = File(/*filesDir.absolutePath*/dir, "words/a_words.txt")
             if (!a_words_file.exists()) {
-                val errmsg = Array<String>(1) { "" }
-                if (
-                    !extractWordsAsset(
-                        getResources().getAssets(),
-                        getFilesDir().getAbsolutePath().toString(),
-                        errmsg,
-                    )
-                )
-                    Toast.makeText(this, errmsg[0], Toast.LENGTH_LONG).show()
+                if (!extractWordsAsset(assets, /*filesDir.absolutePath*/dir, errmsg))
+                    (this as Context).showToast(errmsg[0])
 
-                Toast.makeText(this, a_words_file.path.toString() + " failed", Toast.LENGTH_LONG)
-                    .show()
+                (this as Context).showToast(a_words_file.path.toString() + " failed")
             } else {
-                if (registerPrivatePath(getFilesDir().getAbsolutePath()))
-                    Toast.makeText(this, "private path registered", Toast.LENGTH_LONG).show()
+                if (registerPrivatePath(/*filesDir.absolutePath*/dir, errmsg))
+                    (this as Context).showToast("private path registered: ${errmsg[0]}")
             }
             if (a_words_file.exists())
-                Toast.makeText(this, a_words_file.path.toString() + " success", Toast.LENGTH_LONG)
-                    .show()
+                (this as Context).showToast(a_words_file.path.toString() + " success")
         } catch (e: Exception) {
-            Toast.makeText(this, e.toString(), Toast.LENGTH_LONG).show()
+            (this as Context).showToast(e.toString())
         }
+
+        requestPermissions(
+            arrayOf(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+            ),
+            6,
+        )
+        // Check for external storage
+        if (Build.VERSION.SDK_INT >= 30 && !Environment.isExternalStorageManager())
+            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+
     }
 
     companion object {
@@ -121,8 +140,11 @@ class CharffleActivity : ComponentActivity() {
         external fun registerPrivatePath(fpath: String, errm: Array<String>? = null): Boolean
 
         init {
-
-            System.loadLibrary("charffle_c")
+            try {
+                System.loadLibrary("charffle_c")
+            } catch (e: UnsatisfiedLinkError) {
+                (this as Context).showToast("Library load failed: ${e.message}")
+            }
         }
     }
 }
@@ -139,42 +161,22 @@ fun CharffleScreen() {
         modifier = Modifier.padding(padding).fillMaxHeight().fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(space = 24.dp),
     ) {
-        ElevatedCard(
-            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-            colors =
-                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().size(130.dp).padding(padding),
-                verticalArrangement = Arrangement.SpaceBetween,
-            ) {
-                OutlinedTextField(
-                    value = chars,
-                    onValueChange = { chars = it },
-                    singleLine = true,
-                    label = { Text("Characters") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        InputCard(
+            chars,
+            { chars = it },
+            {
+                val msg = Array<String>(1) { "" }
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        list = CharffleActivity.shuffle(chars.toString())
 
-                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = {
-                            val msg = Array<String>(1) { "" }
-                            scope.launch(Dispatchers.IO) {                                    list = CharffleActivity.shuffle(chars.toString())
-
-                                withContext(Dispatchers.Main) {
-
-                                    Toast.makeText(ctx, msg[0], Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        }
-                    ) {
-                        Text("Shuffle")
+                        withContext(Dispatchers.Main) { ctx.showToast(msg[0]) }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) { ctx.showToast(e.toString()) }
                     }
                 }
-            }
-        }
+            },
+        )
 
         ElevatedCard(
             elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
@@ -182,23 +184,53 @@ fun CharffleScreen() {
                 CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             modifier = Modifier.fillMaxWidth().fillMaxHeight(),
         ) {
-            if (list.size > 0)
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(128.dp),
-                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                ) {
-                    items(list.size) { index ->
-                        ElevatedCard(modifier = Modifier.padding(6.dp).fillMaxWidth()) {
-                            Text(
-                                text = list[index],
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 30.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(10.dp),
-                            )
-                        }
-                    }
-                }
+            if (!list.isEmpty()) ShuffledListGrid(list)
+        }
+    }
+}
+
+@Composable
+fun InputCard(chars: String, onCharsChange: (String) -> Unit, onShuffle: () -> Unit) {
+    ElevatedCard(
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().size(130.dp).padding(8.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            OutlinedTextField(
+                value = chars,
+                onValueChange = onCharsChange,
+                singleLine = true,
+                label = { Text("Characters") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = onShuffle) { Text("Shuffle") }
+            }
+        }
+    }
+}
+
+@Composable
+fun ShuffledListGrid(list: Array<String>) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(128.dp),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+    ) {
+        items(list.size) { index ->
+            ElevatedCard(modifier = Modifier.padding(6.dp).fillMaxWidth()) {
+                Text(
+                    text = list[index],
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 30.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(10.dp),
+                )
+            }
         }
     }
 }
