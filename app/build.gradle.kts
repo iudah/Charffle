@@ -1,25 +1,26 @@
 plugins {
-    id("com.android.application") 
-    id("kotlin-android") 
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" // this version matches your Kotlin version
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
-    namespace = "com.zeroone.charffle"
-    compileSdk = 34
-    ndkVersion = "26.1.10909125"
+    namespace = "io.github.iudah.charffle"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    buildToolsVersion = libs.versions.buildTools.get()
+    ndkVersion = libs.versions.ndk.get()
     
     defaultConfig {
-        applicationId = "com.zeroone.charffle"
-        minSdk = 30
-        targetSdk = 33
+        applicationId = "io.github.iudah.charffle"
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
-        
+
         vectorDrawables { 
             useSupportLibrary = true
         }
-        
+
         externalNativeBuild {
             cmake {
                 // Passes optional arguments to CMake.
@@ -39,12 +40,13 @@ android {
             }
         }
     }
+
     
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-
+    
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -57,18 +59,44 @@ android {
         compose = true
     }
     
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+    
    composeOptions {
         kotlinCompilerExtensionVersion="1.5.15"
     }
-    
-    externalNativeBuild{
+
+     externalNativeBuild{
         cmake{
             path=file("CMakeLists.txt")
-            version="3.30.5"
+            version=libs.versions.cmake.get()
+        }
+    }
+
+    packaging {
+        resources {
+            excludes +="commonMain/default/linkdata/package_androidx/0_androidx.knm"
+            excludes +="META-INF/kotlin-project-structure-metadata.json"
+            excludes +="commonMain/default/linkdata/module"
+            excludes +="nativeMain/default/manifest"
+            excludes +="commonMain/default/linkdata/root_package/0_.knm"
+            excludes +="nonJvmMain/default/manifest"
+            excludes +="nativeMain/default/linkdata/module"
+            excludes +="nonJvmMain/default/linkdata/module"
+            excludes +="nativeMain/default/linkdata/root_package/0_.knm"
+            excludes +="commonMain/default/manifest"
+            excludes +="META-INF/androidx/annotation/annotation/LICENSE.txt"
+            excludes +="nonJvmMain/default/linkdata/root_package/0_.knm"
+            excludes +="nonJvmMain/default/linkdata/package_androidx/0_androidx.knm"
         }
     }
 }
 
+// composeCompiler {
+//    reportsDestination = layout.buildDirectory.dir("compose_compiler")
+//    stabilityConfigurationFile = rootProject.layout.projectDirectory.file("stability_config.conf")
+// }
 
 tasks
     .withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>()
@@ -82,24 +110,30 @@ tasks
         compilerOptions
             .jvmTarget
             .set(
-                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
             )
     }
 
 dependencies {
+    // Dependency on a local library module editor
+    //implementation(project(":local_library"))
+    
+    // Dependency on local binaries
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    
+    implementation(libs.collectionktx)
+    implementation(libs.material)
+    implementation(libs.material3)
+    
+    implementation(libs.core)
+    implementation(libs.activity)
+    implementation(libs.activitycompose)
+    implementation(libs.appcompat)
+    implementation(libs.constraintlayout)
+    
 
-    implementation("org.jetbrains.kotlin:kotlin-compose-compiler-plugin-embeddable:2.1.0-Beta2")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.9.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.compose.foundation:foundation-layout:1.6.8")
-    implementation("androidx.activity:activity-compose:1.9.0")
-    implementation("androidx.activity:activity:1.9.0")
-    implementation("androidx.compose.material3:material3:1.2.1")
-    implementation("androidx.compose.runtime:runtime:1.6.8")
-    implementation("androidx.compose.ui:ui:1.6.8")
-    implementation("androidx.compose.ui:ui-unit:1.6.8")
-    implementation("androidx.compose.ui:ui-graphics:1.6.8")
-    implementation("androidx.compose.material:material:1.6.8")
-    implementation("androidx.compose.ui:ui-tooling:1.6.8")
+    implementation(libs.annotation)
+    // To use the Java-compatible @Experimental API annotation
+    implementation(libs.annotation.experimental)
 }
+

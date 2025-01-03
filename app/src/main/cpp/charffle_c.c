@@ -231,7 +231,7 @@ jint JNI_OnLoad(JavaVM *vm, __attribute__((unused)) void *reserved) {
     return JNI_ERR;
   }
   jclass clazz =
-      (*env)->FindClass(env, "com/zeroone/charffle/CharffleActivity");
+      (*env)->FindClass(env, "io/github/iudah/charffle/CharffleActivity");
   if (!clazz) {
     LOGE("class unavailable; ");
     return JNI_ERR;

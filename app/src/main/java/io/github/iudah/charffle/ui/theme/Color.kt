@@ -1,4 +1,4 @@
-package com.zeroone.charffle.ui.theme
+package io.github.iudah.charffle.ui.theme
 import androidx.compose.ui.graphics.Color
 
 val primaryLight = Color(0xFF345072)
