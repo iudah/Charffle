@@ -1,4 +1,4 @@
-package com.zeroone.charffle.ui.theme
+package io.github.iudah.charffle.ui.theme
 
 import android.app.Activity
 import android.os.Build

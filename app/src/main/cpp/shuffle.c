@@ -1,5 +1,5 @@
 #ifndef DEFAULT_WORDS_DIRECTORY
-#define DEFAULT_WORDS_DIRECTORY ""
+#define DEFAULT_WORDS_DIRECTORY "."
 #endif
 
 #include <bits/pthread_types.h>
@@ -19,10 +19,11 @@ volatile int active_thread_count = 0;
 static char *words_directory_path = NULL;
 char error_buffer[2048];
 
-#define update_thread_count(x)                                                 \
-  pthread_mutex_lock(&thread_count_mutex);                                     \
-  active_thread_count x;                                                       \
+static inline void update_thread_count(int x) {
+  pthread_mutex_lock(&thread_count_mutex);
+  active_thread_count += x;
   pthread_mutex_unlock(&thread_count_mutex);
+}
 
 struct anagram_context {
   FILE *dictionary_file;
@@ -99,15 +100,21 @@ char has_match(char **word_list, char *current_word,
   while ((cmp = strncmp(word_list[*current_index], current_word,
                         current_word_length))) {
 
-    if (word_list[*current_index])
-      free(word_list[*current_index]);
-    word_list[*current_index] = NULL;
-    if ((*current_index += 1) >= list_end_index || cmp > 0) {
+    if (*current_index == 338) {
+      printf("...\n");
+    }
+    if (cmp < 0) {
+      if (word_list[*current_index])
+        free(word_list[*current_index]);
+      word_list[*current_index] = NULL;
+      *current_index += 1;
+    }
+    if ((*current_index) >= list_end_index || cmp > 0) {
       printf("No match found after comparison.\n");
       return 0;
     };
   }
-  printf("Match found for '%s'\n", current_word);
+  printf("Match found for '%s' at %" PRIu64 "\n", current_word, *current_index);
   return 1;
 }
 
@@ -186,7 +193,45 @@ void pop_from_stack(char *word, uint64_t *word_len, uint64_t *k, uint64_t *j,
   printf("Popped from stack: word='%s', candidates='%s'\n", word, candidates);
 }
 
+void generate_combination(const char *full_word, int full_word_length,
+                          char *combination, char *candidate,
+                          int candidate_length, char **word_list, uint64_t *idx,
+                          int bottom, struct anagram_context *anagram_data) {
+  if (!candidate_length)
+    return;
+  if (has_match(word_list, (char *)full_word, full_word_length, idx, bottom)) {
+    printf("Match found for %s at %" PRIu64 ", %s\n", full_word, *idx,
+           word_list[*idx]);
+    if (full_word_length > 1 && word_list[*idx][full_word_length] == 0) {
+      append_word(&anagram_data->possible_anagrams,
+                  anagram_data->num_anagrams_found,
+                  &anagram_data->anagrams_capacity, word_list[*idx], 0);
+      anagram_data->num_anagrams_found++;
+      printf("Found anagram: %s\n", word_list[*idx]);
+      word_list[*idx] = NULL;
+      *idx += 1;
+    }
+  } else {
+    return;
+  }
+  char unused_candidates[candidate_length];
+
+  for (int i = 0; i < candidate_length; i++) {
+    if (i)
+      memcpy(unused_candidates, candidate, i);
+    memcpy(unused_candidates + i, candidate + i + 1, candidate_length - 1 - i);
+    unused_candidates[candidate_length - 1] = 0;
+    combination[0] = candidate[i];
+    combination[1] = 0;
+    printf("%s ... %s\n", full_word, unused_candidates);
+    generate_combination(full_word, full_word_length + 1, combination + 1,
+                         unused_candidates, candidate_length - 1, word_list,
+                         idx, bottom, anagram_data);
+  }
+}
+
 void *do_anagram(struct anagram_context *anagram_data) {
+
   // initial letter
   char word[anagram_data->input_word_length + 1];
   word[0] = anagram_data->unique_letter;
@@ -234,7 +279,12 @@ void *do_anagram(struct anagram_context *anagram_data) {
         printf("Match started at idx: %" PRIu64 "\n", idx);
       }
       len = strlen(buffer) - 1;
-      buffer[len] = 0;
+      if (len > anagram_data->input_word_length) {
+        printf("Skipping longer word: %s", buffer);
+        continue;
+      }
+      if (buffer[len] == '\n')
+        buffer[len] = 0;
       if (append_word(&words, idx++, &limit, buffer, len)) {
         printf("Could not append new word\n");
         return NULL;
@@ -262,71 +312,21 @@ void *do_anagram(struct anagram_context *anagram_data) {
   uint64_t bottom = idx;
   idx = 0;
 
-  uint64_t l = 0;
   char candidates[candidate_length + 1];
   memcpy(candidates, new_anagram_candidates, sizeof(candidates));
+  candidates[candidate_length] = 0;
 
   // Debug loop start
   printf("Starting permutation loop...\n");
 
-  uint64_t anagram_len = 2;
-  uint64_t k = 1;
-  uint64_t j = 0;
-  while (j < candidate_length) {
-    word[k] = candidates[j];
-    word[k + 1] = 0;
+  printf("%s ...\n", candidates);
 
-    printf("Current word: %s\n", word);
-
-    putchar('-');
-    puts(word);
-
-    if (has_match(words, word, anagram_len, &idx, bottom)) {
-      putchar(' ');
-      puts(words[idx]);
-
-      if (l < j)
-        l = j;
-      l++;
-      if (l < candidate_length) {
-        printf("Pushing to stack: word: %s, anagram_len: %" PRIu64
-               ", k: %" PRIu64 ", j: %" PRIu64 ", l: %" PRIu64 "\n",
-               word, anagram_len, k, j, l);
-        push_to_stack(word, anagram_len, k, j, l, candidates, candidate_length,
-                      anagram_data->input_word_length);
-      }
-      if (anagram_len > 2 && words[idx][anagram_len] == 0) {
-        append_word(&anagram_data->possible_anagrams,
-                    anagram_data->num_anagrams_found,
-                    &anagram_data->anagrams_capacity, words[idx], 0);
-        anagram_data->num_anagrams_found++;
-        printf("Found anagram: %s\n", words[idx]);
-        words[idx] = NULL;
-        idx++;
-      }
-
-      anagram_len++;
-      k++;
-    }
-    j++;
-
-    if (j == candidate_length && stack_len) {
-      pop_from_stack(word, &anagram_len, &k, &j, &l, candidates,
-                     candidate_length, anagram_data->input_word_length);
-
-      char tmp = candidates[l];
-      candidates[l] = candidates[j];
-      candidates[j] = tmp;
-
-      printf("Stack pop and swap candidates[%" PRIu64
-             "] with candidates[%" PRIu64 "]\n",
-             l, j);
-    }
-  }
+  generate_combination(word, 1, word + 1, candidates, candidate_length, words,
+                       &idx, bottom, anagram_data);
 
   // Debug thread count update
   printf("Updating thread count...\n");
-  update_thread_count(--);
+  update_thread_count(-1);
 
   return NULL;
 }
@@ -428,21 +428,21 @@ char **anagram(const char *word, uint64_t *len) {
     anagram_data[i].thread_index = i;
     anagram_data[i].unique_letter = unik[i];
 
-    update_thread_count(++);
+    update_thread_count(+1);
     if (pthread_create(anagram_threads + i, NULL, (void *)do_anagram,
                        anagram_data + i)) {
       printf("Failed to create thread %" PRIu64 "\n", i);
-      update_thread_count(--);
+      update_thread_count(-1);
     } else {
       printf("Successfully created thread %" PRIu64 "\n", i);
     }
   }
 
-  while (1) {
-    sleep(1);
-    if (active_thread_count <= 0)
-      break;
-  }
+  // while (1) {
+  //   sleep(1);
+  //   if (active_thread_count <= 0)
+  //     break;
+  // }
 
   for (uint64_t i = 0; i < uniq_len; i++) {
     pthread_join(anagram_threads[i], NULL);
@@ -522,9 +522,9 @@ int main() {
   uint64_t len;
 
   char **a = anagram(word, &len);
-  // for (int i = 0; i < len; i++) {
-  //   puts(a[i]);
-  // }
+  for (int i = 0; i < len; i++) {
+    puts(a[i]);
+  }
 
   printf("%" PRIu64 " \n", len);
 }

@@ -21,7 +21,6 @@ char set_words_directory_path(const char *path);
 jobjectArray shuffle(JNIEnv *env, __attribute__((unused)) jobject clazz,
                      jobject chars) {
 
-  
   const char *xters = (*env)->GetStringUTFChars(env, chars, NULL);
 
   uint64_t n_matches = 0;
@@ -46,7 +45,6 @@ jobjectArray shuffle(JNIEnv *env, __attribute__((unused)) jobject clazz,
             env, n_matches ? "A problem occured while computing anagrams"
                            : "No anagrams found"));
   }
-
 
   return jmatches;
 }
@@ -228,7 +226,7 @@ jint JNI_OnLoad(JavaVM *vm, __attribute__((unused)) void *reserved) {
     return JNI_ERR;
   }
   jclass clazz =
-      (*env)->FindClass(env, "com/zeroone/charffle/CharffleActivity");
+      (*env)->FindClass(env, "io/github/iudah/charffle/CharffleActivity");
   if (!clazz) {
     LOGE("class unavailable; ");
     return JNI_ERR;

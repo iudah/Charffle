@@ -1,4 +1,4 @@
-package com.zeroone.charffle
+package io.github.iudah.charffle
 
 import android.content.res.AssetManager
 import android.os.Bundle
@@ -39,7 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import com.zeroone.charffle.ui.theme.AppTheme
+import io.github.iudah.charffle.ui.theme.AppTheme
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,7 +59,7 @@ class CharffleActivity : ComponentActivity() {
             AppTheme {
                 window.setNavigationBarContrastEnforced(false)
                 window.setStatusBarContrastEnforced(false)
-                window.statusBarColor = MaterialTheme.colorScheme.primary.toArgb()
+                window.statusBarColor = Color.Transparent.toArgb()
                 window.navigationBarColor = Color.Transparent.toArgb()
                 WindowCompat.getInsetsController(window, window.decorView)
                     .isAppearanceLightNavigationBars = !isSystemInDarkTheme()
