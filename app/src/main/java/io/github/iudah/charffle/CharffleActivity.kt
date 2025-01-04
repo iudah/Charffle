@@ -92,16 +92,16 @@ class CharffleActivity : ComponentActivity() {
       }
     }
     try {
-      val dir = "/data/data/com.zeroone.charffle/files/"
+      // val dir = "/data/data/com.zeroone.charffle/files/"
       val errmsg = Array<String>(1) { "" }
-      val a_words_file = File(/*filesDir.absolutePath*/ dir, "words/a_words.txt")
+      val a_words_file = File(filesDir.absolutePath, "words/a_words.txt")
       if (!a_words_file.exists()) {
-        if (!extractWordsAsset(assets, /*filesDir.absolutePath*/ dir, errmsg))
+        if (!extractWordsAsset(assets, filesDir.absolutePath, errmsg))
             (this as Context).showToast(errmsg[0])
 
         (this as Context).showToast(a_words_file.path.toString() + " failed")
       } else {
-        if (registerPrivatePath(/*filesDir.absolutePath*/ dir, errmsg))
+        if (registerPrivatePath(filesDir.absolutePath, errmsg))
             (this as Context).showToast("private path registered: ${errmsg[0]}")
       }
       if (a_words_file.exists())
