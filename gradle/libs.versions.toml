@@ -1,5 +1,5 @@
 [versions]
-minSdk = "26"
+minSdk = "24"
 compileSdk = "34"
 targetSdk = "34"
 buildTools = "34.0.4"

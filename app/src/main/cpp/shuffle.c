@@ -197,12 +197,11 @@ void generate_combination(const char *full_word, int full_word_length,
                           char *combination, char *candidate,
                           int candidate_length, char **word_list, uint64_t *idx,
                           int bottom, struct anagram_context *anagram_data) {
-  if (!candidate_length)
-    return;
+  
   if (has_match(word_list, (char *)full_word, full_word_length, idx, bottom)) {
     printf("Match found for %s at %" PRIu64 ", %s\n", full_word, *idx,
            word_list[*idx]);
-    if (full_word_length > 1 && word_list[*idx][full_word_length] == 0) {
+    if (full_word_length > 2 && word_list[*idx][full_word_length] == 0) {
       append_word(&anagram_data->possible_anagrams,
                   anagram_data->num_anagrams_found,
                   &anagram_data->anagrams_capacity, word_list[*idx], 0);
@@ -214,6 +213,10 @@ void generate_combination(const char *full_word, int full_word_length,
   } else {
     return;
   }
+  
+  if (!candidate_length)
+    return;
+    
   char unused_candidates[candidate_length];
 
   for (int i = 0; i < candidate_length; i++) {
